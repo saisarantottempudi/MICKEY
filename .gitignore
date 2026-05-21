@@ -1,0 +1,17 @@
+backend/venv/
+data/chroma/
+data/memory/*.db
+data/logs/*.jsonl
+data/logs/*.log
+data/backups/
+models/
+node_modules/
+__pycache__/
+*.pyc
+.DS_Store
+.env
+dist/
+build/
+*.wav
+*.mp3
+/tmp/
