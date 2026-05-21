@@ -75,4 +75,4 @@ if __name__ == "__main__":
     print("🤖 MICKEY is starting up...")
     print(f"   Server: http://localhost:{FLASK_PORT}")
     print(f"   Health: http://localhost:{FLASK_PORT}/api/health")
-    socketio.run(app, host=FLASK_HOST, port=FLASK_PORT, debug=True)
+    socketio.run(app, host=FLASK_HOST, port=FLASK_PORT, debug=True, allow_unsafe_werkzeug=True)
