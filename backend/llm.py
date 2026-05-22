@@ -4,6 +4,7 @@ from config import OLLAMA_URL, OLLAMA_MODEL, SYSTEM_PROMPT
 from memory.conversation_log import log_message, start_session
 from memory.context_builder import build_messages
 from memory.chroma_store import add_document
+from model_router import get_model_for_query, get_routing_info
 from datetime import datetime
 
 
@@ -11,17 +12,22 @@ class Brain:
     def __init__(self):
         self.history = [{"role": "system", "content": SYSTEM_PROMPT}]
         self._msg_counter = 0
+        self._last_model_used = OLLAMA_MODEL
         start_session()
 
-    def think(self, user_input: str) -> str:
+    def think(self, user_input: str, force_model: str = None) -> str:
         # Log user message
         log_message("user", user_input)
+
+        # Multi-model routing
+        model = force_model or get_model_for_query(user_input)
+        self._last_model_used = model
 
         # Build RAG-augmented messages
         messages = build_messages(user_input, self.history[1:])
 
         response = requests.post(f"{OLLAMA_URL}/api/chat", json={
-            "model": OLLAMA_MODEL,
+            "model": model,
             "messages": messages,
             "stream": False
         })
@@ -41,12 +47,18 @@ class Brain:
 
         return reply
 
+    @property
+    def last_model(self) -> str:
+        return self._last_model_used
+
     def think_stream(self, user_input: str):
         log_message("user", user_input)
+        model = get_model_for_query(user_input)
+        self._last_model_used = model
         messages = build_messages(user_input, self.history[1:])
 
         response = requests.post(f"{OLLAMA_URL}/api/chat", json={
-            "model": OLLAMA_MODEL,
+            "model": model,
             "messages": messages,
             "stream": True
         }, stream=True)

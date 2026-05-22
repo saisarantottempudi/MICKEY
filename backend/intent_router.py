@@ -1,5 +1,6 @@
 import json
 from system_commands import apps, filesystem, calendar_cmd, system_info
+from plugins import registry as plugin_registry
 
 COMMAND_MAP = {
     "open_app": apps.open_app,
@@ -39,6 +40,8 @@ def route(llm_response: str) -> dict:
 def _execute(parsed: dict) -> dict:
     action = parsed.get("action")
     params = parsed.get("params", {})
+
+    # Check built-in commands first
     handler = COMMAND_MAP.get(action)
     if handler:
         try:
@@ -46,4 +49,10 @@ def _execute(parsed: dict) -> dict:
             return {"type": "action_result", "action": action, "result": result}
         except Exception as e:
             return {"type": "error", "action": action, "result": str(e)}
-    return {"type": "error", "result": f"Unknown action: {action}"}
+
+    # Check plugins
+    plugin_result = plugin_registry.handle(action, params)
+    if plugin_result is not None:
+        return {"type": "action_result", "action": action, "result": plugin_result}
+
+    return {"type": "error", "action": action, "result": f"Unknown action: {action}"}

@@ -28,6 +28,12 @@ You have the following tools available. When the user requests a system action, 
 {"name": "list_dir", "description": "List files in a directory", "parameters": {"path": "string (directory path, default ~)"}}
 {"name": "calendar_today", "description": "Get today's calendar events", "parameters": {}}
 {"name": "system_info", "description": "Get system info (battery, disk, wifi)", "parameters": {}}
+{"name": "pomodoro_start", "description": "Start a 25-minute focus timer", "parameters": {}}
+{"name": "pomodoro_stop", "description": "Stop the current Pomodoro timer", "parameters": {}}
+{"name": "pomodoro_status", "description": "Get Pomodoro timer status", "parameters": {}}
+{"name": "note_add", "description": "Save a quick note", "parameters": {"content": "string", "tags": "string (optional)"}}
+{"name": "note_list", "description": "List recent notes", "parameters": {"limit": "int (default 10)"}}
+{"name": "note_search", "description": "Search notes", "parameters": {"query": "string"}}
 </tools>
 
 When calling a tool, respond with ONLY this JSON format, nothing else:

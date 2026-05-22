@@ -14,12 +14,17 @@ from memory.chroma_store import query as chroma_query, collection_count
 from auth import require_auth, get_or_create_token
 from memory.maintenance import run_daily_maintenance, get_storage_metrics
 from memory.backup import backup_sqlite, backup_chroma, list_backups
+from model_router import get_routing_info
+from camera.detector import quick_check as camera_check, register_face, get_registered_faces
+from proactive import ProactiveScheduler
+from plugins import registry as plugin_registry
 
 app = Flask(__name__)
 CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 brain = Brain()
+proactive = ProactiveScheduler(socketio=socketio)
 
 # Track last exchange for correction detection
 _last_user_query = ""
@@ -47,6 +52,13 @@ def chat():
     llm_response = brain.think(user_input)
     result = route(llm_response)
 
+    # Check if a plugin handles this action
+    if result["type"] == "error" and "Unknown action" in result.get("result", ""):
+        action = result.get("action", "")
+        plugin_result = plugin_registry.handle(action, {})
+        if plugin_result is not None:
+            result = {"type": "action_result", "action": action, "result": plugin_result}
+
     if result["type"] == "action_result":
         summary = brain.think(
             f"System command result: {result['result']}. "
@@ -57,6 +69,7 @@ def chat():
     else:
         _last_assistant_response = result["result"]
 
+    result["model_used"] = brain.last_model
     _last_user_query = user_input
     return jsonify(result)
 
@@ -87,7 +100,8 @@ def health():
     return jsonify({
         "status": "online",
         "assistant": "MICKEY",
-        "model": "hermes3:8b",
+        "models": {"complex": "hermes3:8b", "simple": "llama3.2:latest"},
+        "last_model_used": brain.last_model,
         "memory": {
             "conversations": get_message_count(),
             "sessions": get_session_count(),
@@ -95,6 +109,8 @@ def health():
             "wiki_chunks": collection_count("brain_wiki"),
         },
         "storage": storage,
+        "plugins": plugin_registry.list_plugins(),
+        "proactive": proactive._running,
     })
 
 
@@ -168,6 +184,76 @@ def backups():
     return jsonify(list_backups())
 
 
+@app.route("/api/camera/check", methods=["GET"])
+@require_auth
+def camera_detect():
+    """Quick camera check — detect and recognize faces."""
+    return jsonify(camera_check())
+
+
+@app.route("/api/camera/register", methods=["POST"])
+@require_auth
+def camera_register():
+    """Register a face for recognition."""
+    data = request.json
+    name = data.get("name", "")
+    if not name:
+        return jsonify({"error": "Name required"}), 400
+    samples = data.get("samples", 20)
+    result = register_face(name, num_samples=samples)
+    return jsonify(result)
+
+
+@app.route("/api/camera/faces", methods=["GET"])
+def camera_faces():
+    """List registered faces."""
+    return jsonify({"faces": get_registered_faces()})
+
+
+@app.route("/api/plugins", methods=["GET"])
+def plugins_list():
+    """List loaded plugins and their commands."""
+    return jsonify({
+        "plugins": plugin_registry.list_plugins(),
+        "commands": plugin_registry.list_all_commands(),
+    })
+
+
+@app.route("/api/plugins/run", methods=["POST"])
+@require_auth
+def plugins_run():
+    """Run a plugin command directly."""
+    data = request.json
+    command = data.get("command", "")
+    params = data.get("params", {})
+    result = plugin_registry.handle(command, params)
+    if result is None:
+        return jsonify({"error": f"No plugin handles '{command}'"}), 404
+    return jsonify({"result": result})
+
+
+@app.route("/api/proactive/briefing", methods=["GET"])
+@require_auth
+def proactive_briefing():
+    """Trigger morning briefing manually."""
+    return jsonify({"briefing": proactive.trigger_briefing()})
+
+
+@app.route("/api/proactive/review", methods=["GET"])
+@require_auth
+def proactive_review():
+    """Trigger evening review manually."""
+    return jsonify({"review": proactive.trigger_review()})
+
+
+@app.route("/api/routing", methods=["POST"])
+def routing_info():
+    """Check which model would handle a query (debug endpoint)."""
+    data = request.json
+    query = data.get("query", "")
+    return jsonify(get_routing_info(query))
+
+
 @socketio.on("user_message")
 def handle_message(data):
     user_input = data.get("message", "")
@@ -191,6 +277,19 @@ if __name__ == "__main__":
     print("   Indexing Brain wiki...")
     result = index_brain_wiki()
     print(f"   Indexed {result.get('files_processed', 0)} files, {result.get('chunks_indexed', 0)} chunks")
+
+    # Load plugins
+    print("   Loading plugins...")
+    plugin_registry.discover()
+    loaded = plugin_registry.list_plugins()
+    print(f"   Loaded {len(loaded)} plugin(s): {', '.join(p['name'] for p in loaded)}")
+
+    # Start proactive scheduler
+    proactive.start()
+    print("   Proactive scheduler started (morning briefing, reminders, evening review)")
+
+    # Multi-model routing
+    print("   Model routing: simple → llama3.2 (3B), complex → hermes3 (8B)")
 
     token = get_or_create_token()
     print(f"   Auth token: {token}")
