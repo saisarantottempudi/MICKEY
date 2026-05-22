@@ -1,6 +1,6 @@
 #!/bin/bash
 # MICKEY startup script — used by launchd and manual start
-# Starts backend (Flask) and frontend (Vite dev) together
+# Starts backend (Flask), frontend (Vite dev), and wake word listener
 
 MICKEY_DIR="/Users/mickey/MICKEY"
 LOG_DIR="$MICKEY_DIR/data/logs"
@@ -30,13 +30,22 @@ npx vite --host > "$LOG_DIR/frontend.log" 2>&1 &
 FRONTEND_PID=$!
 echo "   Frontend PID: $FRONTEND_PID"
 
-echo "   Backend:  http://localhost:5050"
-echo "   Frontend: http://localhost:5173"
-echo "🤖 MICKEY is online."
+# Start wake word listener
+cd "$MICKEY_DIR/backend"
+source venv/bin/activate
+python3 wake_word.py > "$LOG_DIR/wake_word.log" 2>&1 &
+WAKE_PID=$!
+echo "   Wake word PID: $WAKE_PID"
+
+echo "   Backend:    http://localhost:5050"
+echo "   Frontend:   http://localhost:5173"
+echo "   Wake words: 'Hey Mickey', 'Daddy's Home', 'Good Morning Mickey'"
+echo "🤖 MICKEY is online and listening."
 
 # Save PIDs for stop script
 echo "$BACKEND_PID" > "$LOG_DIR/backend.pid"
 echo "$FRONTEND_PID" > "$LOG_DIR/frontend.pid"
+echo "$WAKE_PID" > "$LOG_DIR/wake_word.pid"
 
-# Wait for both
+# Wait for all
 wait
