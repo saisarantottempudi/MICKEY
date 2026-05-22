@@ -37,15 +37,24 @@ python3 wake_word.py > "$LOG_DIR/wake_word.log" 2>&1 &
 WAKE_PID=$!
 echo "   Wake word PID: $WAKE_PID"
 
+# Start menu bar app
+cd "$MICKEY_DIR/backend"
+source venv/bin/activate
+python3 menubar.py > "$LOG_DIR/menubar.log" 2>&1 &
+MENU_PID=$!
+echo "   Menu bar PID: $MENU_PID"
+
 echo "   Backend:    http://localhost:5050"
 echo "   Frontend:   http://localhost:5173"
 echo "   Wake words: 'Hey Mickey', 'Daddy's Home', 'Good Morning Mickey'"
+echo "   Menu bar:   Check your status bar ↗"
 echo "🤖 MICKEY is online and listening."
 
 # Save PIDs for stop script
 echo "$BACKEND_PID" > "$LOG_DIR/backend.pid"
 echo "$FRONTEND_PID" > "$LOG_DIR/frontend.pid"
 echo "$WAKE_PID" > "$LOG_DIR/wake_word.pid"
+echo "$MENU_PID" > "$LOG_DIR/menubar.pid"
 
 # Wait for all
 wait

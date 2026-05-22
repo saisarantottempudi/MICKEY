@@ -6,7 +6,7 @@ LOG_DIR="/Users/mickey/MICKEY/data/logs"
 echo "🛑 Stopping MICKEY..."
 
 # Kill by PID files
-for svc in backend frontend wake_word; do
+for svc in backend frontend wake_word menubar; do
     PID_FILE="$LOG_DIR/$svc.pid"
     if [ -f "$PID_FILE" ]; then
         PID=$(cat "$PID_FILE")
