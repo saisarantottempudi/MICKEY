@@ -50,11 +50,7 @@ class MickeyMenuBar(rumps.App):
             None,
             rumps.MenuItem("💬 Quick Chat...", callback=self.quick_chat),
             rumps.MenuItem("📋 Morning Briefing", callback=self.briefing),
-            rumps.MenuItem("🍅 Pomodoro", callback=None, children=[
-                rumps.MenuItem("Start", callback=self.pomo_start),
-                rumps.MenuItem("Status", callback=self.pomo_status),
-                rumps.MenuItem("Stop", callback=self.pomo_stop),
-            ]),
+            self._build_pomodoro_menu(),
             rumps.MenuItem("📝 Quick Note...", callback=self.quick_note),
             None,
             rumps.MenuItem("ℹ️ System Info", callback=self.system_info),
@@ -64,7 +60,7 @@ class MickeyMenuBar(rumps.App):
             rumps.MenuItem("⚙️ Copy Auth Token", callback=self.copy_token),
         ]
 
-        # Start health check timer
+        # Start health check timer (note: _build_pomodoro_menu called above)
         self._health_timer = rumps.Timer(self.check_health, 30)
         self._health_timer.start()
         # Initial check
@@ -72,6 +68,14 @@ class MickeyMenuBar(rumps.App):
 
     def _initial_check(self):
         self.check_health(None)
+
+    def _build_pomodoro_menu(self):
+        """Build Pomodoro submenu."""
+        pomo = rumps.MenuItem("🍅 Pomodoro")
+        pomo["Start"] = rumps.MenuItem("Start", callback=self.pomo_start)
+        pomo["Status"] = rumps.MenuItem("Status", callback=self.pomo_status)
+        pomo["Stop"] = rumps.MenuItem("Stop", callback=self.pomo_stop)
+        return pomo
 
     def check_health(self, _):
         try:
@@ -86,7 +90,6 @@ class MickeyMenuBar(rumps.App):
         except Exception:
             self.status_item.title = "○ MICKEY: Offline"
 
-    @rumps.clicked("🖥 Open HUD")
     def open_hud(self, _):
         webbrowser.open(FRONTEND_URL)
 
