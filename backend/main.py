@@ -7,6 +7,10 @@ from stt import transcribe
 from tts import speak
 from intent_router import route
 from config import FLASK_HOST, FLASK_PORT
+from memory.conversation_log import get_message_count, get_session_count
+from memory.mistake_tracker import log_mistake, get_recent_mistakes, get_mistake_count, is_correction
+from memory.brain_indexer import index_brain_wiki
+from memory.chroma_store import query as chroma_query, collection_count
 
 app = Flask(__name__)
 CORS(app)
@@ -14,13 +18,27 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 
 brain = Brain()
 
+# Track last exchange for correction detection
+_last_user_query = ""
+_last_assistant_response = ""
+
 
 @app.route("/api/chat", methods=["POST"])
 def chat():
+    global _last_user_query, _last_assistant_response
     data = request.json
     user_input = data.get("message", "")
     if not user_input:
         return jsonify({"error": "No message provided"}), 400
+
+    # Check if this is a correction of the last response
+    if is_correction(user_input) and _last_user_query:
+        log_mistake(
+            user_query=_last_user_query,
+            wrong_response=_last_assistant_response,
+            correction=user_input,
+            countermeasure=f"When asked about '{_last_user_query}', use this correction instead.",
+        )
 
     llm_response = brain.think(user_input)
     result = route(llm_response)
@@ -31,7 +49,11 @@ def chat():
             "Summarize this for the user conversationally in one sentence."
         )
         result["spoken"] = summary
+        _last_assistant_response = summary
+    else:
+        _last_assistant_response = result["result"]
 
+    _last_user_query = user_input
     return jsonify(result)
 
 
@@ -59,8 +81,51 @@ def health():
     return jsonify({
         "status": "online",
         "assistant": "MICKEY",
-        "model": brain.history[0]["content"][:50] + "...",
+        "model": "hermes3:8b",
+        "memory": {
+            "conversations": get_message_count(),
+            "sessions": get_session_count(),
+            "mistakes": get_mistake_count(),
+            "wiki_chunks": collection_count("brain_wiki"),
+        },
     })
+
+
+@app.route("/api/correct", methods=["POST"])
+def correct():
+    data = request.json
+    log_mistake(
+        user_query=data.get("query", _last_user_query),
+        wrong_response=data.get("wrong_response", _last_assistant_response),
+        correction=data.get("correction", ""),
+        countermeasure=data.get("countermeasure"),
+        category=data.get("category", "general"),
+    )
+    return jsonify({"status": "ok", "message": "Correction logged. I'll remember this."})
+
+
+@app.route("/api/memory/search", methods=["GET"])
+def memory_search():
+    q = request.args.get("q", "")
+    if not q:
+        return jsonify({"error": "No query provided"}), 400
+    results = {
+        "wiki": chroma_query("brain_wiki", q, n_results=3),
+        "conversations": chroma_query("conversations", q, n_results=3),
+        "mistakes": chroma_query("mistakes", q, n_results=2),
+    }
+    return jsonify(results)
+
+
+@app.route("/api/memory/reindex", methods=["POST"])
+def reindex():
+    result = index_brain_wiki()
+    return jsonify(result)
+
+
+@app.route("/api/memory/mistakes", methods=["GET"])
+def mistakes():
+    return jsonify(get_recent_mistakes(limit=20))
 
 
 @socketio.on("user_message")
@@ -72,7 +137,11 @@ def handle_message(data):
 
 
 if __name__ == "__main__":
+    # Index Brain wiki on startup
     print("🤖 MICKEY is starting up...")
+    print("   Indexing Brain wiki...")
+    result = index_brain_wiki()
+    print(f"   Indexed {result.get('files_processed', 0)} files, {result.get('chunks_indexed', 0)} chunks")
     print(f"   Server: http://localhost:{FLASK_PORT}")
     print(f"   Health: http://localhost:{FLASK_PORT}/api/health")
     socketio.run(app, host=FLASK_HOST, port=FLASK_PORT, debug=True, allow_unsafe_werkzeug=True)
