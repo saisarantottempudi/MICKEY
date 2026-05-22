@@ -29,6 +29,7 @@ import os
 import sys
 import signal
 import requests
+import webbrowser
 from datetime import datetime
 
 # Add backend to path
@@ -44,6 +45,7 @@ WAKE_CLIP_DURATION = 3.0       # seconds to record for wake word check
 VOICE_THRESHOLD = 0.015        # minimum volume to trigger recording
 COOLDOWN_SECONDS = 5           # ignore mic for N seconds after interaction
 BACKEND_URL = "http://localhost:5050"
+FRONTEND_URL = "http://localhost:5173"
 
 WAKE_PHRASES = [
     "hey mickey",
@@ -301,6 +303,9 @@ def main():
                 greeting = get_greeting(wake_phrase)
                 print(f"  🤖 {greeting}")
                 speak_and_play(greeting)
+
+                # Open HUD in browser
+                webbrowser.open(FRONTEND_URL)
 
                 # If it was "good morning", also trigger briefing
                 if "good morning" in wake_phrase:
