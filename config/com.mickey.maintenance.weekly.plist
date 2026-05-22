@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.mickey.maintenance.weekly</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/mickey/MICKEY/backend/venv/bin/python3</string>
+        <string>/Users/mickey/MICKEY/scripts/maintenance.py</string>
+        <string>weekly</string>
+    </array>
+
+    <!-- Every Sunday at 3:30 AM -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Weekday</key>
+        <integer>0</integer>
+        <key>Hour</key>
+        <integer>3</integer>
+        <key>Minute</key>
+        <integer>30</integer>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/Users/mickey/MICKEY/data/logs/maintenance-weekly.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/mickey/MICKEY/data/logs/maintenance-weekly-err.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/mickey/MICKEY</string>
+</dict>
+</plist>

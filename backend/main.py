@@ -12,6 +12,8 @@ from memory.mistake_tracker import log_mistake, get_recent_mistakes, get_mistake
 from memory.brain_indexer import index_brain_wiki
 from memory.chroma_store import query as chroma_query, collection_count
 from auth import require_auth, get_or_create_token
+from memory.maintenance import run_daily_maintenance, get_storage_metrics
+from memory.backup import backup_sqlite, backup_chroma, list_backups
 
 app = Flask(__name__)
 CORS(app)
@@ -81,6 +83,7 @@ def voice():
 
 @app.route("/api/health", methods=["GET"])
 def health():
+    storage = get_storage_metrics()
     return jsonify({
         "status": "online",
         "assistant": "MICKEY",
@@ -91,6 +94,7 @@ def health():
             "mistakes": get_mistake_count(),
             "wiki_chunks": collection_count("brain_wiki"),
         },
+        "storage": storage,
     })
 
 
@@ -131,6 +135,37 @@ def reindex():
 @app.route("/api/memory/mistakes", methods=["GET"])
 def mistakes():
     return jsonify(get_recent_mistakes(limit=20))
+
+
+@app.route("/api/maintenance", methods=["POST"])
+@require_auth
+def maintenance():
+    """Run daily maintenance manually."""
+    result = run_daily_maintenance()
+    return jsonify(result)
+
+
+@app.route("/api/storage", methods=["GET"])
+def storage():
+    """Get storage metrics."""
+    return jsonify(get_storage_metrics())
+
+
+@app.route("/api/backup", methods=["POST"])
+@require_auth
+def backup():
+    """Create manual backup."""
+    results = {
+        "sqlite": backup_sqlite(),
+        "chroma": backup_chroma(),
+    }
+    return jsonify(results)
+
+
+@app.route("/api/backups", methods=["GET"])
+def backups():
+    """List all backups."""
+    return jsonify(list_backups())
 
 
 @socketio.on("user_message")
