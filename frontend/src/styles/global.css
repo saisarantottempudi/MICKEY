@@ -42,3 +42,31 @@ html, body, #root {
   color: var(--primary);
   text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
 }
+
+/* ── Responsive: tablets (iPad) ── */
+@media (max-width: 1024px) {
+  .main-grid {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto 1fr auto !important;
+    gap: 8px !important;
+    padding: 8px 12px !important;
+  }
+  .main-grid > .chat-panel { order: 2; max-height: 30vh; }
+  .main-grid > .center-col { order: 1; max-height: 35vh; }
+  .main-grid > .response-panel { order: 3; max-height: 25vh; }
+  .center-col .reactor-area { max-height: 25vh; }
+}
+
+/* ── Responsive: phones (iPhone) ── */
+@media (max-width: 600px) {
+  .main-grid {
+    gap: 4px !important;
+    padding: 4px 8px !important;
+  }
+  .main-grid > .center-col { max-height: 28vh; }
+  .main-grid > .chat-panel { max-height: 25vh; }
+  .main-grid > .response-panel { max-height: 20vh; }
+  .status-bar { font-size: 10px !important; padding: 4px 8px !important; }
+  .input-bar { padding: 6px 8px !important; }
+  .mickey-title { font-size: 16px !important; letter-spacing: 4px !important; }
+}

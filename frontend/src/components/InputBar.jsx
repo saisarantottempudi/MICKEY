@@ -12,7 +12,7 @@ export default function InputBar({ onSend, onVoiceStart, onVoiceStop, isRecordin
   }
 
   return (
-    <div style={{
+    <div className="input-bar" style={{
       display: 'flex', gap: 10, padding: '12px 20px',
       borderTop: '1px solid var(--border)',
       alignItems: 'center',

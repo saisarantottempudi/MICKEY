@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { io } from 'socket.io-client'
+import { API_BASE } from '../utils/api'
 
 export function useSocket() {
   const socketRef = useRef(null)
@@ -8,7 +9,9 @@ export function useSocket() {
   const [isThinking, setIsThinking] = useState(false)
 
   useEffect(() => {
-    const socket = io('http://localhost:5050', { transports: ['websocket', 'polling'] })
+    // Local: connect directly to Flask. Remote: nginx proxies /socket.io/
+    const socketUrl = API_BASE || undefined  // undefined = same origin
+    const socket = io(socketUrl, { transports: ['websocket', 'polling'] })
     socketRef.current = socket
 
     socket.on('connect', () => setConnected(true))

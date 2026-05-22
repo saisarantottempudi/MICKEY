@@ -36,7 +36,7 @@ export default function StatusBar({ state = 'idle', connected }) {
   }
 
   return (
-    <div style={{
+    <div className="status-bar" style={{
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       padding: '8px 20px', borderBottom: '1px solid var(--border)',
       fontFamily: "'Orbitron', sans-serif", fontSize: 11, letterSpacing: 2,

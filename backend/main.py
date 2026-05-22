@@ -11,6 +11,7 @@ from memory.conversation_log import get_message_count, get_session_count
 from memory.mistake_tracker import log_mistake, get_recent_mistakes, get_mistake_count, is_correction
 from memory.brain_indexer import index_brain_wiki
 from memory.chroma_store import query as chroma_query, collection_count
+from auth import require_auth, get_or_create_token
 
 app = Flask(__name__)
 CORS(app)
@@ -24,6 +25,7 @@ _last_assistant_response = ""
 
 
 @app.route("/api/chat", methods=["POST"])
+@require_auth
 def chat():
     global _last_user_query, _last_assistant_response
     data = request.json
@@ -58,6 +60,7 @@ def chat():
 
 
 @app.route("/api/voice", methods=["POST"])
+@require_auth
 def voice():
     audio_file = request.files.get("audio")
     if not audio_file:
@@ -92,6 +95,7 @@ def health():
 
 
 @app.route("/api/correct", methods=["POST"])
+@require_auth
 def correct():
     data = request.json
     log_mistake(
@@ -118,6 +122,7 @@ def memory_search():
 
 
 @app.route("/api/memory/reindex", methods=["POST"])
+@require_auth
 def reindex():
     result = index_brain_wiki()
     return jsonify(result)
@@ -136,12 +141,25 @@ def handle_message(data):
     socketio.emit("response_complete")
 
 
+@app.route("/api/token", methods=["GET"])
+def get_token():
+    """Get auth token (only accessible from localhost)."""
+    from auth import is_local_request
+    if not is_local_request():
+        return jsonify({"error": "Token only accessible from localhost"}), 403
+    return jsonify({"token": get_or_create_token()})
+
+
 if __name__ == "__main__":
     # Index Brain wiki on startup
     print("🤖 MICKEY is starting up...")
     print("   Indexing Brain wiki...")
     result = index_brain_wiki()
     print(f"   Indexed {result.get('files_processed', 0)} files, {result.get('chunks_indexed', 0)} chunks")
+
+    token = get_or_create_token()
+    print(f"   Auth token: {token}")
     print(f"   Server: http://localhost:{FLASK_PORT}")
     print(f"   Health: http://localhost:{FLASK_PORT}/api/health")
+    print(f"   Remote: https://<tailscale-hostname>/api/health")
     socketio.run(app, host=FLASK_HOST, port=FLASK_PORT, debug=True, allow_unsafe_werkzeug=True)
